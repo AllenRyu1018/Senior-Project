@@ -287,7 +287,7 @@ def CircuitPauliPartition(c, p, n):
 
     return pp
 
-def Arow(c, cpp, ip, x):
+def Arow(c, cpp, ip):
     temp = cpp[ip]
     xor = temp[0]
     for i in range(1, len(temp)):
@@ -301,12 +301,27 @@ def Arow(c, cpp, ip, x):
     for i in range(row_num):
         for j in range(col_num):
             if xor[i][j] != 0:
-                keys.append((i, j))
+                keys.append([i, j])
                 values.append(xor[i][j])
     
+    extracted = []
+    for key in keys:
+        extracted.append(c[key[0]][key[1]])
+    
+    arow = []
+    for i in range(len(extracted)):
+        new = [extracted[i], keys[i][1] + 1, values[i]]
+        arow.append(new)
+        
+    return arow
+
+def zeromaker(n):
+    zeros = []
+    for _ in range(n):
+        zeros.append(0)
+    return zeros
 
 def Amat(c, cpp, ip):
-    (_, n) = c.shape
     pp = []
     for i in ip:
         temp = []
@@ -315,7 +330,20 @@ def Amat(c, cpp, ip):
                 temp.append(j)
         pp.append(temp)
 
+    gate_var = GateVariables1(n1)
+    num_gates = len(gate_var)
 
+    amat = []
+    for k in range(len(pp)):
+        arow = Arow(c, cpp, pp[k])
+        row = zeromaker(num_gates)
+        for gate in arow:
+            index = gate_var.index(gate)
+            row[index] += 1
+        
+        amat.append(row)
+
+    return np.ndarray(amat)
 
 def tuples(l):
     newlist = []
@@ -394,6 +422,76 @@ def Gmarg(l):
         f = 3
     return [f, j, k]
 
+def Averaged_Circuits():
+    n = 10
+    r = 4
+    j = 0
+    gate_vars = GateVariables1(n)
+    m = len(gate_vars)
+    rank = 0
+    jmax = 100
+    while rank != m and j < jmax:
+        j += 1
+        Aaa = []
+        Aaa = np.array(Aaa)
+        Mmm = []
+        Mmm = np.array(Mmm)
+        dd = [2, 2, 2, 2, 2, 3, 5, 8, 13, 21]
+        kk = [2, 2, 2, 2, 1, 1, 1, 1, 1, 1]
+
+        for d in range(len(dd)):
+            c = RandomMirrorCircuit(n, dd[d])
+            print(type(c))
+            c2 = RandomCircuit2(n, r)
+            print(type(c2))
+            c = np.concatenate((c, c2))
+            
+            p = PauliHistory(c)
+
+            cm = c
+            const_array = []
+            for i in range(n):
+                const_array.append(NumberOfOneQubitGates + NumberOfTwoQubitGates + 1)
+            const_array = np.array([const_array])
+            cm = np.concatenate((cm, const_array))
+            
+            cpp = CircuitPauliPartition(cm, p, n)
+            knn_p = KNNPaulis(n, kk[d])
+
+            aa = Amat(cm, cpp, knn_p)
+            if Aaa.ndim < 2:
+                Aaa = aa
+            else:
+                Aaa = np.concatenate((Aaa, aa))
+            if Mmm.ndim < 2:
+                Mmm = cm
+            else:
+                Mmm = np.concatenate((Mmm, cm))
+
+        # Aaa = np.array(Aaa)
+        # rank = np.linalg.matrix_rank(Aaa)
+        # print("On try j = ", j, ", the rank ratio is ", rank, "/", m, ".")
+        # Aaa.tolist()
+
+    if rank == m:
+        print("Total number of estimated fidelities = ",len(Aaa))
+        return Aaa
+
+    else:
+        return None
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -442,19 +540,45 @@ def ProjectSimplex(p):
         if diff > 0:
             max = i + 1
     
+    
+    
+
+Averaged_Circuits()
 
 
 
-
-
-# c = np.array([[6,4,4,5,7,6,3,7,4,6], [6,4,4,5,8,6,3,8,4,6], [6,1,0,2,0,1,0,2,0,3], [3,5,6,7,8,5,4,5,6,6], [2,0,2,0,1,0,1,0,2,0], [5,4,4,7,3,6,4,4,5,5]])
-# cm = np.array([[6,4,4,5,7,6,3,7,4,6], [6,4,4,5,8,6,3,8,4,6], [6,1,0,2,0,1,0,2,0,3], [3,5,6,7,8,5,4,5,6,6], [2,0,2,0,1,0,1,0,2,0], [5,4,4,7,3,6,4,4,5,5], [9,9,9,9,9,9,9,9,9,9]])
+# c = np.array([[4,7,4,7,5,5,3,8,8,8], [4,8,4,8,5,5,3,7,7,7], [4,7,6,4,8,6,6,4,4,5], [5,2,0,1,0,2,0,1,0,6], [7,2,0,1,0,1,0,1,0,3], [3,7,5,8,4,4,6,4,7,3]])
+# cm = np.array([[4,7,4,7,5,5,3,8,8,8], [4,8,4,8,5,5,3,7,7,7], [4,7,6,4,8,6,6,4,4,5], [5,2,0,1,0,2,0,1,0,6], [7,2,0,1,0,1,0,1,0,3], [3,7,5,8,4,4,6,4,7,3], [9,9,9,9,9,9,9,9,9,9]])
 # p = PauliHistory(c)
 
 # cpp = CircuitPauliPartition(cm, p, n1)
 
-# keys, values = Arow(cm, cpp, [1, 2, 3], 1)
+
 
 # knn_p = KNNPaulis(n1, 2)
 
-# Amat(cm, cpp, knn_p)
+# ippp = []
+# for i in range(len(knn_p)):
+#     ret = []
+#     curr = knn_p[i]
+#     for j in range(len(curr)):
+#         if curr[j] != 0:
+#             ret.append(j)
+    
+#     ippp.append(ret)
+
+# val = Arow(cm, cpp, ippp[79])
+
+# print(val)
+
+# amat = Amat(cm, cpp, knn_p)
+# row = amat[69]
+# indices = []
+# for i in range(len(row)):
+#     if row[i] != 0:
+#         indices.append(i)
+
+# print(indices)
+
+
+# # Amat(cm, cpp, knn_p)
